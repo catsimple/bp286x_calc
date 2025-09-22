@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BP286X 参数计算器</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --light-gray: #f8f9fa;
+            --medium-gray: #e9ecef;
+            --dark-gray: #495057;
+            --border-color: #ced4da;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #343a40;
+            background-color: var(--light-gray);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 95%;
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+        }
+        .input-panel {
+            flex: 1;
+            min-width: 300px;
+            padding: 30px;
+        }
+        .output-panel {
+            flex: 1.5;
+            padding: 30px;
+            background-color: #fcfdff;
+            border-left: 1px solid var(--medium-gray);
+        }
+        h1, h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--medium-gray);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            /* MODIFICATION: Constrain input group width */
+            max-width: 350px;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--dark-gray);
+        }
+        .label-note {
+            font-weight: normal;
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-left: 8px;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-wrapper:focus-within {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .input-wrapper.input-error {
+            border-color: var(--danger-color);
+        }
+        .input-wrapper input {
+            flex-grow: 1;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            font-size: 1.1em;
+            outline: none;
+        }
+        .input-wrapper .unit {
+            padding: 0 15px;
+            font-weight: 500;
+            color: var(--dark-gray);
+            background-color: var(--medium-gray);
+            border-left: 1px solid var(--border-color);
+            align-self: stretch;
+            display: flex;
+            align-items: center;
+        }
+        .warning-text {
+            font-size: 0.85em;
+            color: var(--danger-color);
+            margin-top: 5px;
+            display: none;
+        }
+        #results-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .result-card {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--medium-gray);
+            display: flex;
+            flex-direction: column;
+        }
+        .result-card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            font-size: 1.1em;
+        }
+        .result-card .main-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--danger-color);
+            margin-bottom: 10px;
+        }
+        .result-card .details {
+            font-size: 0.9em;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            color: #555;
+        }
+        .result-card .details li {
+            margin-bottom: 5px;
+        }
+        .result-card .details strong {
+            color: var(--success-color);
+        }
+        .result-card .key-note {
+            font-weight: bold;
+            color: var(--danger-color);
+        }
+        .error-message {
+            color: var(--danger-color);
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            background-color: #f8d7da;
+            border-radius: 8px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--medium-gray);
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        /* --- NEW: Responsive Styles for Mobile --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                flex-direction: column;
+                width: 100%;
+                box-shadow: none;
+            }
+            .input-panel {
+                min-width: 0; /* Remove min-width on mobile */
+                padding: 20px;
+            }
+            .output-panel {
+                border-left: none;
+                border-top: 1px solid var(--medium-gray);
+                padding: 20px;
+            }
+            .input-group {
+                max-width: none; /* Allow input groups to be full-width on mobile */
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .result-card .main-value {
+                font-size: 1.6em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Input Panel -->
+        <div class="input-panel">
+            <h1>设计参数</h1>
+            <div class="input-group">
+                <label for="minInputVoltage">最低交流输入</label>
+                <div class="input-wrapper" id="vinWrapper">
+                    <input type="number" id="minInputVoltage" value="110">
+                    <span class="unit">Vac</span>
+                </div>
+                <p class="warning-text" id="vinWarning">必须在 85-265V 范围内</p>
+            </div>
+            <div class="input-group">
+                <label for="outputCurrent">输出电流<small class="label-note">根据型号，最大输出电流不同，请参照技术手册</small></label>
+                <div class="input-wrapper" id="currentWrapper">
+                    <input type="number" id="outputCurrent" value="200">
+                    <span class="unit">mA</span>
+                </div>
+                <p class="warning-text" id="currentWarning">推荐范围 10-550mA</p>
+            </div>
+            <div class="input-group">
+                <label for="outputVoltage">输出电压</label>
+                <div class="input-wrapper" id="voutWrapper">
+                    <input type="number" id="outputVoltage" value="50">
+                    <span class="unit">V</span>
+                </div>
+                 <p class="warning-text" id="voutWarning">推荐范围 15-350V</p>
+            </div>
+            <div class="input-group">
+                <label for="minFrequency">最低工作频率</label>
+                <div class="input-wrapper" id="freqWrapper">
+                    <input type="number" id="minFrequency" value="60">
+                    <span class="unit">kHz</span>
+                </div>
+                <p class="warning-text" id="freqWarning">推荐范围 40-80kHz</p>
+            </div>
+            <div class="input-group">
+                <label for="targetOVP">目标OVP保护电压</label>
+                <div class="input-wrapper" id="ovpWrapper">
+                    <input type="number" id="targetOVP" value="65">
+                    <span class="unit">V</span>
+                </div>
+                <p class="warning-text" id="ovpWarning">目标OVP电压应高于输出电压</p>
+            </div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="output-panel">
+            <h1>计算结果</h1>
+            <div id="results-container">
+                <div class="result-card">
+                    <h3>Rcs (电流采样电阻)</h3>
+                    <div class="main-value"><span id="rcsRec"></span> Ω</div>
+                    <ul class="details">
+                        <li>精确计算值: <span id="rcsResult"></span> Ω</li>
+                        <li>选型时注意电阻精度</li>
+                    </ul>
+                </div>
+                <div class="result-card">
+                    <h3>L (功率电感)</h3>
+                    <div class="main-value"><span id="lRec"></span> <span id="lRecUnit"></span></div>
+                    <ul class="details">
+                        <li>精确值 (基于 <span id="freqUsed" style="color: #0056b3; font-weight: bold;"></span> kHz): <br><strong id="lResult"></strong></li>
+                        <li>峰值电流 (IPK): <span id="ipkResult"></span> A</li>
+                        <li>饱和电流 (Isat) ≥ <strong><span id="isatRec"></span> A</strong></li>
+                    </ul>
+                </div>
+                <div class="result-card">
+                    <h3>Rovp (过压保护电阻)</h3>
+                    <div class="main-value"><span id="rovpRec"></span></div>
+                    <ul class="details">
+                         <li>精确计算值: <span id="rovpResult"></span></li>
+                         <li class="key-note">建议＞15kΩ！若不需OVP请悬空</li>
+                    </ul>
+                </div>
+                <div class="result-card">
+                    <h3>整流后直流电压</h3>
+                    <ul class="details" style="font-size: 1.0em; margin-top: 10px;">
+                        <li>最低 (基于 <span id="sourceAcMin" style="color: #0056b3; font-weight: bold;"></span> Vac): <br><strong><span id="dcVoltageMin"></span></strong></li>
+                        <li style="margin-top: 10px;">最高 (基于 265 Vac): <br><strong><span id="dcVoltageMax"></span></strong></li>
+                        <li style="font-size: 0.8em; color: #888; margin-top: 15px;">* 理论峰值，未计纹波</li>
+                    </ul>
+                </div>
+                <div class="result-card">
+                    <h3>推荐电感范围</h3>
+                    <div class="main-value" id="lRangeDisplay" style="font-size: 1.3em; color: var(--success-color);"></div>
+                    <ul class="details">
+                        <li style="font-size: 0.9em; color: #888; margin-top: 5px;">* 基于最低输入电压计算</li>
+                    </ul>
+                </div>
+                <div class="result-card">
+                    <h3>推荐电容值</h3>
+                     <ul class="details" style="font-size: 1.0em; margin-top: 10px;">
+                        <li>输出功率 (Pout): <br><strong><span id="poutValue"></span> W</strong></li>
+                        <li style="margin-top: 10px;">C1 (整流滤波):<br><strong><span id="c1Value"></span></strong></li>
+                        <li style="margin-top: 10px;">C2 (输出滤波):<br><strong><span id="c2Value"></span></strong></li>
+                        <li style="font-size: 0.8em; color: #888; margin-top: 15px;">* 经验值，最终需测试验证</li>
+                    </ul>
+                </div>
+            </div>
+            <div id="error-container" style="display: none;">
+                <p class="error-message" id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <p>本计算器基于BP286X数据手册。计算结果仅供参考，最终设计需经过实际测试验证</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const E24_SERIES = [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1];
+            const CAP_VOLTAGE_RATINGS = [10, 16, 25, 35, 50, 63, 80, 100, 160, 200, 250, 400, 450];
+            const inputs = document.querySelectorAll('input[type="number"]');
+
+            function findNearestStandardValue(value) {
+                if (value <= 0) return 0;
+                let magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+                let normalizedValue = value / magnitude;
+                let closest = E24_SERIES.reduce((prev, curr) => Math.abs(curr - normalizedValue) < Math.abs(prev - normalizedValue) ? curr : prev);
+                let result = parseFloat((closest * magnitude).toPrecision(2));
+                return result.toString().indexOf('.') === -1 ? result : result.toString();
+            }
+
+            function formatInductance(value_H) {
+                if (value_H <= 0 || !isFinite(value_H)) return { value: 'N/A', unit: '' };
+                const value_mH = value_H * 1000;
+                if (value_mH < 1) {
+                    const value_uH = value_mH * 1000;
+                    return { value: value_uH.toFixed(1), unit: 'µH' };
+                } else {
+                    return { value: value_mH.toFixed(2), unit: 'mH' };
+                }
+            }
+            
+            function findNextStandardVoltage(requiredVoltage) {
+                return CAP_VOLTAGE_RATINGS.find(rating => rating >= requiredVoltage) || CAP_VOLTAGE_RATINGS[CAP_VOLTAGE_RATINGS.length - 1];
+            }
+
+            function validateAndCalculate() {
+                const elements = {
+                    vin: { input: document.getElementById('minInputVoltage'), wrapper: document.getElementById('vinWrapper'), warning: document.getElementById('vinWarning'), min: 85, max: 265 },
+                    current: { input: document.getElementById('outputCurrent'), wrapper: document.getElementById('currentWrapper'), warning: document.getElementById('currentWarning'), min: 10, max: 550 },
+                    vout: { input: document.getElementById('outputVoltage'), wrapper: document.getElementById('voutWrapper'), warning: document.getElementById('voutWarning'), min: 15, max: 350 },
+                    freq: { input: document.getElementById('minFrequency'), wrapper: document.getElementById('freqWrapper'), warning: document.getElementById('freqWarning'), min: 40, max: 80 },
+                    ovp: { input: document.getElementById('targetOVP'), wrapper: document.getElementById('ovpWrapper'), warning: document.getElementById('ovpWarning') }
+                };
+                
+                const VIN_ac_min = parseFloat(elements.vin.input.value) || 0;
+                const ILED = parseFloat(elements.current.input.value) || 0;
+                const VLED = parseFloat(elements.vout.input.value) || 0;
+                const F_min_khz = parseFloat(elements.freq.input.value) || 0;
+                const Vovp_target = parseFloat(elements.ovp.input.value) || 0;
+
+                const resultsContainer = document.getElementById('results-container');
+                const errorContainer = document.getElementById('error-container');
+                const errorMessage = document.getElementById('errorMessage');
+                
+                // --- VALIDATION STAGE (Ordered by Priority) ---
+                
+                // 1. Vin range check
+                const isVinHardRequirementMet = VIN_ac_min >= 85 && VIN_ac_min <= 265;
+                elements.vin.wrapper.classList.toggle('input-error', !isVinHardRequirementMet);
+                elements.vin.warning.style.display = isVinHardRequirementMet ? 'none' : 'block';
+                if (!isVinHardRequirementMet) {
+                    resultsContainer.style.display = 'none';
+                    errorContainer.style.display = 'block';
+                    errorMessage.textContent = `设计无效：交流输入电压必须在 85-265V 范围内！`;
+                    return;
+                }
+
+                // 2. Headroom / Voltage裕量 check
+                const VIN_dc_min = VIN_ac_min * Math.sqrt(2);
+                const HEADROOM_FACTOR = 1.20; // 20% headroom
+                if (VLED * HEADROOM_FACTOR >= VIN_dc_min) {
+                    resultsContainer.style.display = 'none';
+                    errorContainer.style.display = 'block';
+                    const maxVled = VIN_dc_min / HEADROOM_FACTOR;
+                    errorMessage.innerHTML = `设计不合理：为保证稳定工作，最低直流输入电压 (${VIN_dc_min.toFixed(1)}V) 必须比输出电压 (${VLED}V) 至少高出 20%。<br>此输入下，建议 Vout ≤ ${maxVled.toFixed(1)}V。`;
+                    elements.vout.wrapper.classList.add('input-error');
+                    return;
+                } else {
+                    elements.vout.wrapper.classList.remove('input-error');
+                }
+
+                // 3. Max Power check
+                const ILED_A = ILED / 1000;
+                const Pout = VLED * ILED_A;
+                if (Pout > 50) {
+                    resultsContainer.style.display = 'none';
+                    errorContainer.style.display = 'block';
+                    errorMessage.innerHTML = `设计无效：输出功率 (${Pout.toFixed(1)}W) 不能超过 50W！`;
+                    elements.vout.wrapper.classList.add('input-error');
+                    elements.current.wrapper.classList.add('input-error');
+                    return;
+                } else {
+                    elements.current.wrapper.classList.remove('input-error');
+                }
+                
+                resultsContainer.style.display = 'grid';
+                errorContainer.style.display = 'none';
+
+                // Soft Validations
+                let isOvpInvalid = false;
+                ['current', 'vout', 'freq'].forEach(key => {
+                    const el = elements[key];
+                    const val = parseFloat(el.input.value) || 0;
+                    const isValid = val >= el.min && val <= el.max;
+                    el.wrapper.classList.toggle('input-error', !isValid);
+                    el.warning.style.display = isValid ? 'none' : 'block';
+                });
+                
+                if (Vovp_target < VLED && Vovp_target > 0) {
+                    isOvpInvalid = true;
+                    elements.ovp.wrapper.classList.add('input-error');
+                    elements.ovp.warning.style.display = 'block';
+                } else {
+                    elements.ovp.wrapper.classList.remove('input-error');
+                    elements.ovp.warning.style.display = 'none';
+                }
+
+                // --- CALCULATION STAGE ---
+                const VCS_TH = 0.373;
+                const IPK = 2 * ILED_A;
+                const Rcs = IPK > 0 ? VCS_TH / IPK : 0;
+                const Isat_rec = parseFloat((IPK * 1.5).toFixed(2));
+
+                const F_min_hz = F_min_khz * 1000;
+                const L_H = (VLED * (VIN_dc_min - VLED)) / (F_min_hz * IPK * VIN_dc_min);
+                const lFormatted = formatInductance(L_H);
+                const lRec = findNearestStandardValue(parseFloat(lFormatted.value));
+
+                const L_H_at_40k = (VLED * (VIN_dc_min - VLED)) / (40000 * IPK * VIN_dc_min);
+                const L_H_at_80k = (VLED * (VIN_dc_min - VLED)) / (80000 * IPK * VIN_dc_min);
+                const lRangeMaxFormatted = formatInductance(L_H_at_40k);
+                const lRangeMinFormatted = formatInductance(L_H_at_80k);
+                
+                const L_H_rec_val = (lFormatted.unit === "µH") ? parseFloat(lRec) / 1000000 : parseFloat(lRec) / 1000;
+                const Rcs_rec = parseFloat(findNearestStandardValue(Rcs) || Rcs);
+
+                let Rovp_kOhm = 0;
+                if (!isOvpInvalid && Vovp_target > VLED && L_H_rec_val > 0 && Rcs_rec > 0) {
+                    const Tovp_s = (L_H_rec_val * VCS_TH) / (Rcs_rec * Vovp_target);
+                    const Tovp_us = Tovp_s * 1000000;
+                    if (Tovp_us > 0) Rovp_kOhm = 150 / Tovp_us;
+                }
+
+                // Capacitor Calculation
+                const C1_min = Pout * 0.8; 
+                const C1_max = Pout * 2.0; 
+                const c1Text = `${C1_min.toFixed(1)}-${C1_max.toFixed(1)}µF / 400V`;
+                
+                const C2_volt_rec = findNextStandardVoltage(VLED * 1.25);
+                const c2Text = `10-47µF, 耐压≥${C2_volt_rec}V`;
+
+
+                // --- DISPLAY STAGE ---
+                document.getElementById('sourceAcMin').textContent = VIN_ac_min;
+                document.getElementById('dcVoltageMin').textContent = VIN_dc_min.toFixed(1) + ' Vdc';
+                const VIN_dc_max = 265 * Math.sqrt(2);
+                document.getElementById('dcVoltageMax').textContent = VIN_dc_max.toFixed(1) + ' Vdc';
+
+                document.getElementById('rcsResult').textContent = Rcs.toFixed(3);
+                document.getElementById('rcsRec').textContent = findNearestStandardValue(Rcs);
+
+                document.getElementById('freqUsed').textContent = F_min_khz;
+                document.getElementById('ipkResult').textContent = IPK.toFixed(2);
+                document.getElementById('isatRec').textContent = Isat_rec;
+                document.getElementById('lResult').textContent = `${lFormatted.value} ${lFormatted.unit}`;
+                document.getElementById('lRec').textContent = lRec;
+                document.getElementById('lRecUnit').textContent = lFormatted.unit;
+
+                const rangeText = `${lRangeMinFormatted.value} ${lRangeMinFormatted.unit} (80kHz) - ${lRangeMaxFormatted.value} ${lRangeMaxFormatted.unit} (40kHz)`;
+                document.getElementById('lRangeDisplay').textContent = rangeText;
+                
+                document.getElementById('poutValue').textContent = Pout.toFixed(2);
+                document.getElementById('c1Value').textContent = c1Text;
+                document.getElementById('c2Value').textContent = c2Text;
+
+                if(isOvpInvalid || Rovp_kOhm <= 0) {
+                    document.getElementById('rovpResult').textContent = "N/A";
+                    document.getElementById('rovpRec').textContent = "悬空";
+                } else {
+                    document.getElementById('rovpResult').textContent = Rovp_kOhm.toFixed(2) + " kΩ";
+                    document.getElementById('rovpRec').textContent = findNearestStandardValue(Rovp_kOhm) + " kΩ";
+                }
+            }
+            
+            inputs.forEach(input => input.addEventListener('input', validateAndCalculate));
+            validateAndCalculate(); // Initial calculation on page load
+        });
+    </script>
+</body>
+</html>
